@@ -13,3 +13,6 @@ In order to be able to run on the GPU you need the dlib library to be compiled w
 NB: `python setup.sh install` builds and installs python but you may need to remove previously install `dlib` via `pip uninstall dlib`. Make sure to check the dlib version before and after installation via `dlib.__version__` and check the gpu availability on dlib via `dlib.DLIB_USE_CUDA` within python.
 
 Once the code runs on GPU, you should be able to see the process on gpu via `nvidia-smi` command.
+
+
+_Disclaimer: This demo is based on the code on this [article](https://towardsdatascience.com/building-a-face-recognizer-in-python-7fd6630c6340), and only some whistles and bells were added for the purpose of the demo._
