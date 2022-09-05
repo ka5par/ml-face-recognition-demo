@@ -129,3 +129,5 @@ dmypy.json
 .pyre/
 
 data/Animals-151/*
+lightning_logs/*
+*.pkl
