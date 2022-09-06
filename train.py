@@ -12,21 +12,23 @@ if __name__ == "__main__":
 
     train_set, val_set = create_dataloaders()
 
+    early_stopping_callback = pytorch_lightning.callbacks.early_stopping.EarlyStopping(
+        monitor="val_loss",
+        mode="min",
+        min_delta=0.005,
+        patience=15,
+        verbose=True,
+    )
+
+    checkpoint_callback = pytorch_lightning.callbacks.ModelCheckpoint(last=True)
+
     trainer = pytorch_lightning.Trainer(
         gpus=1,
         max_epochs=100,
         precision=16,
         num_sanity_val_steps=0,
         log_every_n_steps=5,
-        callbacks=[
-            pytorch_lightning.callbacks.early_stopping.EarlyStopping(
-                monitor="val_loss",
-                mode="min",
-                min_delta=0.005,
-                patience=15,
-                verbose=True,
-            )
-        ],
+        callbacks=[early_stopping_callback, checkpoint_callback],
     )
 
     model = AnimalModel()

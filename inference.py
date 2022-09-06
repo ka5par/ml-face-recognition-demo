@@ -122,7 +122,7 @@ def get_distances(emb, sfmx, classes_mean, classes_feats):
 
 def load_model():
     model = AnimalModel.load_from_checkpoint(
-        "lightning_logs/version_0/checkpoints/epoch=30-step=620.ckpt"
+        "lightning_logs/version_0/checkpoints/last.ckpt"
     )
     model.eval()
     model = model.cuda()
