@@ -93,13 +93,20 @@ def get_distances(emb, sfmx, classes_mean, classes_feats):
         elif distance == "Mahalanobis":
             from sklearn.covariance import LedoitWolf
 
-            print("Calculating inv covariance for support or training set")
-            sup_inv_cov = [
-                torch.from_numpy(LedoitWolf().fit(cls_feat.cpu().numpy()).precision_)
-                .float()
-                .cuda()
-                for cls_feat in classes_feats
-            ]
+            inv_cov_fpath = "inv_cov.pkl"
+            if not os.path.exists(inv_cov_fpath):
+                print("Calculating inv covariance for support or training set")
+                sup_inv_cov = [
+                    torch.from_numpy(
+                        LedoitWolf().fit(cls_feat.cpu().numpy()).precision_
+                    )
+                    .float()
+                    .cuda()
+                    for cls_feat in classes_feats
+                ]
+                pickle.dump(sup_inv_cov, open(inv_cov_fpath, "wb"))
+            else:
+                sup_inv_cov = pickle.load(open(inv_cov_fpath, "rb"))
             distances_list = distance_metrics.mahalanobis(
                 emb, classes_mean, sup_inv_cov
             )
@@ -108,14 +115,16 @@ def get_distances(emb, sfmx, classes_mean, classes_feats):
         elif distance == "Cosine":
             distances_list = distance_metrics.cosine(emb, classes_mean)
 
-        output_dict[f"{distance}_score"], output_dict[f"{distance}_cls"] = score_calc(
-            distances_list
-        )
-        output_dict[f"{distance}_score"] = (
-            output_dict[f"{distance}_score"].detach().cpu().numpy()[0],
-        )
+        score, cls = score_calc(distances_list)
+        cls = int(cls.detach().cpu().numpy()[0])
+        score = round(float(score.detach().cpu().numpy()[0]), 2)
 
-        output_dict[f"{distance}_cls"] = output_dict[f"{distance}_cls"].cpu().numpy()
+        translation = json.load(open("data/translation.json"))
+        list_translation = list(translation)
+        latin_animal = list_translation[cls]
+        human_readable_animal = translation[latin_animal]
+
+        output_dict[distance] = {human_readable_animal: score}
 
     return output_dict
 
@@ -179,23 +188,23 @@ def inference_id_dataset():
     return train_distances_cls, test_distances_cls
 
 
-def to_animal(res):
-    translation = json.load(open("data/translation.json"))
-    list_translation = list(translation)
+# def to_animal(res):
 
-    for key, item in res.items():
-        if "cls" in key:
-            idx = item
-            latin_animal = list_translation[idx]
-            human_readable_animal = translation[latin_animal]
-            print(f"{key} : {human_readable_animal}")
-        else:
-            print(f"{key} : {item}")
+#     for key, item in res.items():
+#         if "cls" in key:
+#             idx = item
+#             latin_animal = list_translation[idx]
+#             human_readable_animal = translation[latin_animal]
+#             res[key] = human_readable_animal
+#         else:
+#             # To make number JSON seralizable
+#             # try:
+#             res[key] = float(round(res[key], 2))
+
+#     return res
 
 
-def inference_input(
-    input_image,
-):
+def inference_input(input_image, name=None):
     img = Image.open(input_image)
     img = np.array(img)
     transform = get_transform(split="not_train")
@@ -211,9 +220,18 @@ def inference_input(
     distances_cls = get_distances(
         output.repeat(512, 1), sfmx.repeat(512, 1), classes_mean, classes_feats
     )
+    try:
+        distances_cls = {key: item for key, item in distances_cls.items()}
+    except IndexError as e:
+        print(distances_cls)
+        raise e
 
-    distances_cls = {key: item[0] for key, item in distances_cls.items()}
-    to_animal(distances_cls)
+    # preds = to_animal(distances_cls)
+    preds = distances_cls
+    print(preds)
+    if name is not None:
+        with open(f"data/preds/{name}.json", "w") as f:
+            json.dump(preds, f)
 
 
 if __name__ == "__main__":

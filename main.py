@@ -10,6 +10,7 @@ import glob
 import copy
 import dlib
 import inference
+import json
 
 # TODO: automatically choose the parameters of the locator and encoder based on the GPU availability!
 if not dlib.DLIB_USE_CUDA:
@@ -28,11 +29,16 @@ def load_faces():
     faces_encodings = []
     global faces_names
     faces_names = []
-    cur_direc = os.getcwd()
-    path = os.path.join(cur_direc, "data/faces/")
-    list_of_files = [f for f in glob.glob(path + "*.jpg")]
+    global faces_preds
+    faces_preds = []
+    cur_dir = os.getcwd()
+    path = os.path.join(cur_dir, "data", "faces")
+    list_of_files = glob.glob(os.path.join(path, "*.jpg"))
     number_files = len(list_of_files)
     names = list_of_files.copy()
+
+    preds_path = os.path.join(cur_dir, "data", "preds")
+    list_preds = glob.glob(os.path.join(preds_path, "*.json"))
 
     for i in range(number_files):
         globals()["image_{}".format(i)] = face_recognition.load_image_file(
@@ -41,12 +47,51 @@ def load_faces():
         globals()["image_encoding_{}".format(i)] = face_recognition.face_encodings(
             globals()["image_{}".format(i)], num_jitters=10
         )[0]
+
+        if i != 0:
+            globals()["animal_preds_{}".format(i)] = json.load(
+                open(os.path.join(preds_path, list_preds[i - 1]), "r")
+            )
+            # Add face animal preds.
+            faces_preds.append(globals()["animal_preds_{}".format(i)])
+
         faces_encodings.append(globals()["image_encoding_{}".format(i)])
         # Create array of known names
-        names[i] = names[i].replace(cur_direc, "")
+        names[i] = names[i].replace(cur_dir, "")
         faces_names.append(names[i].split("/")[-1].split(".")[0])
 
     # return faces_encodings, faces_names
+
+
+def animal_pred_text(pred):
+    distances = ["Softmax", "Euclidean", "Cosine", "Mahalanobis"]
+
+    left_top = (10, 60)
+    right_bottom = (300, 90)
+    cv2.putText(
+        frame,
+        "Distance from nearest class of an animal classifier: ",
+        (left_top[0], right_bottom[1] - 5),
+        font,
+        0.4,
+        (255, 255, 255),
+        1,
+    )
+    right_bottoms = [110, 130, 150, 170]
+
+    for i, distance in enumerate(distances):
+        long_str = distance + " " + str(pred[distance])
+        cv2.putText(
+            frame,
+            long_str,
+            (30, right_bottoms[i] - 5),
+            font,
+            0.4,
+            (255, 255, 255),
+            1,
+        )
+
+    # for distance
 
 
 load_faces()
@@ -77,6 +122,7 @@ while True:
         )
         face_names = []
         face_confidences = []
+        face_pred = []
         for face_encoding in face_encodings:
             matches = face_recognition.compare_faces(
                 faces_encodings,
@@ -105,14 +151,19 @@ while True:
                 # print("cg:", confidence_gaussian)
                 # print("cg sum: ", confidence_gaussian.sum())
                 # confidence = confidence_gaussian[best_match_index]
+                if best_match_index != 0:
+                    prediction = faces_preds[best_match_index - 1]
+                    face_pred.append(prediction)
+
             face_names.append(name)
             face_confidences.append(confidence)
+
     process_this_frame = not process_this_frame
     # frame_step += 1
 
     # Display the results
-    for (top, right, bottom, left), name, conf in zip(
-        face_locations, face_names, face_confidences
+    for (top, right, bottom, left), name, conf, pred in zip(
+        face_locations, face_names, face_confidences, face_pred
     ):
         top *= 2
         right *= 2
@@ -135,6 +186,8 @@ while True:
             (255, 255, 255),
             1,
         )
+
+        animal_pred_text(pred)
 
     # TODO: create a function for all of these
     if face_names != [] and (np.array(face_names) == "Unknown").any():
@@ -275,6 +328,9 @@ while True:
         delete_path = f"data/faces/{face_names[-1]}.jpg"
         os.remove(delete_path)
         print("delete the face: " + delete_path)
+        delete_path = f"data/preds/{face_names[-1]}.json"
+        os.remove(delete_path)
+        print(f"delete the preds: {delete_path}")
         # TODO: do not reload all faces from the file all over again
         load_faces()
 
@@ -311,11 +367,12 @@ while True:
             widget.icursor("end")
 
         def show_entry_fields(event=None):
-            print(f"Name: {e1.get()}")
-            fpath = f"data/faces/{e1.get()}.jpg"
+            name = e1.get()
+            print(f"Name: {name}")
+            fpath = f"data/faces/{name}.jpg"
             cv2.imwrite(fpath, original_frame)
             master.destroy()
-            inference.inference_input(fpath)
+            inference.inference_input(fpath, name)
             load_faces()
 
         master = tk.Tk()
