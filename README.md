@@ -15,6 +15,9 @@ NB: Make sure cuda and cudnn versions in python env are same to the ones on your
 
 2. Download [Animals-151 Dataset](https://www.kaggle.com/datasets/sharansmenon/animals141). Unzip it into `data/Animals-151` folder. Make so that all the subfolders in `data/Animals-151` are for a specific class (like ImageNet). 
 
+3. Train the model using `train.py`, if the GPU is not enough, change the `batch_size` in the `fit` function. 
+
+
 Once the code runs on GPU, you should be able to see the process on gpu via `nvidia-smi` command.
 
 
