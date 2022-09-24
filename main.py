@@ -160,7 +160,15 @@ while True:
 
     process_this_frame = not process_this_frame
     # frame_step += 1
-
+    if len(face_pred) == 0:
+        face_pred = [
+            {
+                "Softmax": "",
+                "Euclidean": "",
+                "Cosine": "",
+                "Mahalanobis": "",
+            }
+        ] * len(face_names)
     # Display the results
     for (top, right, bottom, left), name, conf, pred in zip(
         face_locations, face_names, face_confidences, face_pred

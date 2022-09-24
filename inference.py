@@ -243,5 +243,5 @@ if __name__ == "__main__":
         ), pickle.load(open("test_distances.pkl", "rb"))
 
     inference_input(
-        "/media/karl/1TB SSD/pythonProject/face-detection-demo/ml-face-recognition-demo/data/faces/Karl Kaspar.jpg",
+        "data/faces/Bill Gates.jpg",
     )
